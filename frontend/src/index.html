@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>워드클라우드 생성기</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>워드클라우드 생성기</h1>
+        
+        <div class="input-section">
+            <textarea id="text-input" placeholder="텍스트를 입력하세요..." oncontextmenu="return true"></textarea>
+            
+            <div class="options-section">
+                <div class="option-group">
+                    <label>배경색:</label>
+                    <select id="background-color">
+                        <option value="white">흰색</option>
+                        <option value="black">검정</option>
+                        <option value="#f0f0f0">연회색</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label>색상 스타일:</label>
+                    <select id="color-func">
+                        <option value="single_color">단색</option>
+                        <option value="random_color">무작위 색상</option>
+                        <option value="gradient_color">그라데이션</option>
+                    </select>
+                    <div id="preview-box" class="preview-box">
+                        <span class="preview-text">미리보기</span>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <label>모양:</label>
+                    <select id="mask-type">
+                        <option value="rectangle">사각형</option>
+                        <option value="circle">원형</option>
+                        <option value="heart">하트</option>
+                    </select>
+                </div>
+
+                <div class="option-group">
+                    <label>폰트:</label>
+                    <select id="fontSelect">
+                        <option value="malgun">맑은 고딕</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="generate-btn">워드클라우드 생성</button>
+        </div>
+
+        <div class="result-section">
+            <div class="image-container">
+                <img id="wordcloud-image" alt="워드클라우드" style="display: none;">
+                <button id="download-btn" class="download-btn" style="display: none;">다운로드</button>
+            </div>
+            <div id="loading-spinner" style="display: none;">
+                <div class="spinner"></div>
+                <p>워드클라우드 생성 중...</p>
+            </div>
+            <div id="error-message" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+    <script src="index.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "wordcloud-generator",
+  "version": "1.0.0",
+  "description": "워드클라우드 생성기",
+  "main": "src/main.py",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^27.1.0"
+  }
+}
