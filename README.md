@@ -124,3 +124,132 @@ python_project/
 - 데이터베이스 파일 (*.db, *.sqlite3)
 - 로그 파일 (*.log)
 - 테스트 커버리지 파일
+
+## 변경 사항 기록 (Changelog)
+
+### 2024-01-09
+#### 워드클라우드 단어 빈도수 퍼센트 계산 추가
+- **파일:** `backend/domain/wordcloud/wordcloud_service.py`
+- **변경 내용:**
+  1. 단어 빈도수에 퍼센트 정보 추가
+     - 전체 단어 수 대비 각 단어의 출현 비율 계산
+     - 소수점 2자리까지 표시
+  2. 응답 형식 업데이트
+     ```json
+     {
+       "success": true,
+       "image": "base64_image_data",
+       "words": [
+         {
+           "word": "단어",
+           "frequency": 10,
+           "percentage": 5.26
+         },
+         ...
+       ]
+     }
+     ```
+- **변경 이유:** 
+  - 단어 빈도수 테이블에 퍼센트 정보 표시 기능 추가
+  - 전체 텍스트에서 각 단어가 차지하는 비중 시각화
+
+#### 워드클라우드 단어 빈도수 분석 기능 추가
+- **파일:** `backend/domain/wordcloud/wordcloud_service.py`
+- **변경 내용:**
+  1. 단어 빈도수 계산 로직 추가
+     - 2글자 이상의 단어만 포함
+     - 빈도수 기준 내림차순, 단어 기준 오름차순 정렬
+     - 상위 100개 단어만 반환
+  2. 응답 형식
+     ```json
+     {
+       "success": true,
+       "image": "base64_image_data",
+       "words": [
+         {
+           "word": "단어",
+           "frequency": 빈도수
+         },
+         ...
+       ]
+     }
+     ```
+- **변경 이유:** 
+  - 워드클라우드와 함께 단어 빈도수 정보 제공
+  - 데이터 분석 및 시각화 기능 강화
+
+#### 클라이언트 워드클라우드 요청 구조 수정
+- **파일:** `frontend/src/index.js`
+- **변경 내용:**
+  1. API 요청 데이터 구조 수정
+     ```javascript
+     // 변경 전
+     {
+         text: "텍스트",
+         config: {
+             font: "폰트명",
+             background_color: "색상",
+             // ...
+         }
+     }
+     
+     // 변경 후
+     {
+         text: "텍스트",
+         font: "폰트명",
+         background_color: "색상",
+         // ...
+     }
+     ```
+  2. 응답 처리 로직 개선
+     - 성공/실패 상태 확인
+     - 이미지 데이터 경로 수정
+     - 에러 메시지 처리 강화
+- **변경 이유:** 
+  - 서버의 `WordCloudRequest` 모델 구조와 일치하도록 수정
+  - 응답 처리 로직 표준화
+
+#### 워드클라우드 이미지 생성 오류 수정
+- **관련 파일:**
+  - `backend/domain/wordcloud/wordcloud_service.py`
+  - `backend/api/routes.py`
+- **변경 내용:**
+  1. 워드클라우드 서비스 응답 형식 개선
+     - 성공/실패 여부를 명시적으로 포함
+     - 오류 발생 시 적절한 에러 메시지 반환
+     ```python
+     # 성공 시
+     {
+         'success': True,
+         'image': 'base64_encoded_image_data',
+         'words': []
+     }
+     
+     # 실패 시
+     {
+         'success': False,
+         'error': '오류 메시지'
+     }
+     ```
+  2. API 응답 처리 개선
+     - 서비스 실패 시 적절한 HTTP 오류 응답 반환
+     - 이미지 데이터 검증 로직 추가
+- **변경 이유:** 
+  - base64 이미지 데이터가 undefined로 반환되는 문제 해결
+  - 오류 처리 및 응답 형식 표준화
+
+#### 워드클라우드 API 응답 형식 수정
+- **파일:** `backend/api/routes.py`
+- **변경 내용:**
+  - 워드클라우드 생성 API의 응답 형식을 이미지 바이너리에서 JSON 형식으로 변경
+  - base64로 인코딩된 이미지를 Data URL 형식으로 포함하여 반환
+  ```json
+  {
+    "success": true,
+    "data": {
+      "image": "data:image/png;base64,...",
+      "words": []
+    }
+  }
+  ```
+- **변경 이유:** 클라이언트에서 JSON 형식의 응답을 기대하고 있어, 이미지 바이너리 대신 base64 인코딩된 이미지를 포함한 JSON 응답으로 수정

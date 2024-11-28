@@ -7,13 +7,15 @@ import os
 from io import BytesIO
 import sys
 from pathlib import Path
+import base64
+import pandas as pd
 
 # 프로젝트 루트 디렉토리를 Python 경로에 추가
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
 from backend.domain.wordcloud.wordcloud_service import WordCloudService
-from backend.domain.wordcloud.wordcloud_model import WordCloudRequest
+from backend.domain.wordcloud.wordcloud_model import WordCloudRequest, WordCloudConfig
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -33,22 +35,32 @@ class FontResponse(BaseModel):
 async def generate_wordcloud(request: WordCloudRequest):
     """워드클라우드 생성 엔드포인트"""
     try:
-        # 워드클라우드 이미지 생성
-        image = wordcloud_service.create_wordcloud(request)
-        
-        # 이미지를 바이트로 변환
-        img_byte_arr = BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        
-        # 이미지를 스트리밍 응답으로 반환
-        return StreamingResponse(
-            content=img_byte_arr,
-            media_type="image/png",
-            headers={
-                "Content-Disposition": "inline; filename=wordcloud.png"
-            }
+        # 워드클라우드 설정을 WordCloudConfig로 변환
+        config = WordCloudConfig(
+            text=request.text,
+            background_color=request.background_color,
+            color_func=request.color_func,
+            mask_type=request.mask_type,
+            width=request.width,
+            height=request.height,
+            max_words=request.max_words,
+            font=request.font
         )
+        
+        # 워드클라우드 이미지 생성
+        result = wordcloud_service.create_wordcloud(request.text, config)
+        
+        if not result['success']:
+            raise HTTPException(status_code=500, detail=result.get('error', '워드클라우드 생성 실패'))
+            
+        # JSON 응답 반환
+        return {
+            "success": True,
+            "data": {
+                "image": result['image'],
+                "words": result['words']
+            }
+        }
         
     except Exception as e:
         logger.error(f"워드클라우드 생성 중 오류 발생: {str(e)}")
@@ -100,6 +112,39 @@ async def get_system_fonts():
         
     except Exception as e:
         logger.error(f"폰트 목록 조회 중 오류 발생: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/download/{filename}")
+async def download_excel(filename: str):
+    """워드클라우드 단어 빈도수 데이터를 엑셀 파일로 다운로드"""
+    try:
+        # 세션에서 데이터를 가져오거나, 임시 저장된 데이터를 가져옵니다
+        data = wordcloud_service.get_last_word_frequency()
+        
+        if not data:
+            raise HTTPException(status_code=404, detail="데이터를 찾을 수 없습니다")
+            
+        # DataFrame 생성
+        df = pd.DataFrame(data)
+        
+        # Excel 파일 생성
+        output = BytesIO()
+        df.to_excel(output, index=False, engine='openpyxl')
+        output.seek(0)
+        
+        # 파일 다운로드 응답
+        headers = {
+            'Content-Disposition': f'attachment; filename=wordcloud_frequency_{filename}.xlsx',
+            'Access-Control-Expose-Headers': 'Content-Disposition'
+        }
+        return StreamingResponse(
+            output, 
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers=headers
+        )
+        
+    except Exception as e:
+        logger.error(f"엑셀 파일 생성 중 오류 발생: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/health")

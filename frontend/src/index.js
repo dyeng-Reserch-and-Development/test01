@@ -130,15 +130,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 },
                 body: JSON.stringify({
                     text: text,
-                    config: {
-                        font: fontSelect.value,
-                        background_color: backgroundColorSelect.value,
-                        color_func: colorFuncSelect.value,
-                        mask_type: maskTypeSelect.value,
-                        width: 800,
-                        height: 400,
-                        max_words: 200
-                    }
+                    font: fontSelect.value,
+                    background_color: backgroundColorSelect.value,
+                    color_func: colorFuncSelect.value,
+                    mask_type: maskTypeSelect.value,
+                    width: 800,
+                    height: 400,
+                    max_words: 200
                 })
             });
             
@@ -149,42 +147,64 @@ document.addEventListener('DOMContentLoaded', async () => {
             // JSON 데이터 가져오기
             const data = await response.json();
             
-            // Base64 이미지 데이터를 이미지로 표시
-            wordcloudImage.src = `data:image/png;base64,${data.image}`;
+            if (!data.success) {
+                throw new Error(data.error || '워드클라우드 생성에 실패했습니다.');
+            }
+            
+            // 이미지 표시
+            wordcloudImage.src = `data:image/png;base64,${data.data.image}`;
             wordcloudImage.style.display = 'block';
             
-            // 다운로드 버튼 표시 및 이벤트 핸들러 설정
-            downloadBtn.style.display = 'block';
-            downloadBtn.onclick = () => {
-                const link = document.createElement('a');
-                link.href = wordcloudImage.src;
-                link.download = 'wordcloud.png';
-                link.click();
-            };
+            // 다운로드 버튼 활성화
+            downloadBtn.style.display = 'inline-block';
+            if (data.data.words && data.data.words.length > 0) {
+                excelDownloadBtn.style.display = 'inline-block';
+            }
             
             // 단어 빈도수 테이블 업데이트
-            updateWordFrequencyTable(data.words);
+            updateWordFrequencyTable(data.data.words);
             
-            // 엑셀 다운로드 버튼 표시 및 이벤트 핸들러 설정
-            excelDownloadBtn.style.display = 'block';
-            excelDownloadBtn.onclick = async () => {
+            // 엑셀 다운로드 버튼 이벤트 핸들러 설정
+            excelDownloadBtn.addEventListener('click', async () => {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/download/${data.id}`);
-                    if (!response.ok) throw new Error('엑셀 파일 다운로드에 실패했습니다.');
+                    showLoading(true);
+                    clearError();
+
+                    // 현재 시간을 파일명에 포함
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                     
+                    // 엑셀 파일 다운로드
+                    const response = await fetch(`${API_BASE_URL}/api/download/${timestamp}`, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('엑셀 파일 다운로드에 실패했습니다.');
+                    }
+                    
+                    // Blob으로 변환
                     const blob = await response.blob();
+                    
+                    // 다운로드 링크 생성 및 클릭
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = response.headers.get('content-disposition').split('filename=')[1].replace(/"/g, '');
+                    a.download = `wordcloud_frequency_${timestamp}.xlsx`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
+                    
                 } catch (error) {
-                    showError(error.message);
+                    console.error('엑셀 다운로드 실패:', error);
+                    showError(`엑셀 다운로드 실패: ${error.message}`);
+                } finally {
+                    showLoading(false);
                 }
-            };
+            });
             
         } catch (error) {
             showError(error.message);
