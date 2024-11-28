@@ -113,11 +113,25 @@ class WordCloudGenerator:
             from wordcloud import WordCloud
             import numpy as np
             from PIL import Image
+            from collections import Counter
+            import platform
+            
+            # 텍스트 전처리
+            text = self.preprocess_text(config.text)
+            self.logger.debug(f"전처리된 텍스트 (generate): {text[:100]}...")
+            
+            if not text.strip():
+                raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
+            
+            # 단어 빈도수 계산
+            words = text.split()
+            word_counts = Counter(words)
+            self.logger.debug(f"단어 빈도수 상위 10개: {dict(word_counts.most_common(10))}")
             
             # 색상 함수 가져오기
             color_func = self._get_color_func(config.color_func)
             
-            self.logger.debug(f"워드클라우드 생성 시작: 폰트={config.font_path}, 마스크={config.mask.shape if config.mask is not None else 'None'}")
+            self.logger.debug(f"워드클라우드 설정: 폰트={config.font_path}, 마스크 크기={config.mask.shape if config.mask is not None else 'None'}")
             
             # WordCloud 객체 생성
             wc = WordCloud(
@@ -129,18 +143,27 @@ class WordCloudGenerator:
                 mask=config.mask,  # 마스크
                 color_func=color_func,
                 prefer_horizontal=0.7,
-                min_font_size=10,
-                max_font_size=200,
+                min_font_size=1,
+                max_font_size=100,
                 relative_scaling=0.5,
                 repeat=False,
-                random_state=42
+                random_state=42,
+                font_step=1,
+                mode='RGBA',
+                include_numbers=False,
+                normalize_plurals=False,
+                regexp=r'[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]+',  # 한글 유니코드 범위 (완성형, 자음, 모음)
+                collocations=False  # 연속된 단어 비활성화
             )
             
             # 워드클라우드 생성
-            wc.generate(config.text)
+            self.logger.debug("워드클라우드 생성 시작...")
+            wc.generate_from_frequencies(word_counts)
+            self.logger.debug("워드클라우드 생성 완료")
             
             # PIL Image로 변환
             image = wc.to_image()
+            self.logger.debug(f"이미지 생성 완료: 크기={image.size}, 모드={image.mode}")
             
             return image
             
@@ -149,13 +172,15 @@ class WordCloudGenerator:
             raise Exception(f"워드클라우드 생성 실패: {str(e)}")
 
     def preprocess_text(self, text: str) -> str:
-        """한글 텍스트 전처리 - 간단한 버전"""
-        # 한글과 영문만 남기고 나머지는 공백으로 변경
-        text = re.sub(r'[^\가-힣a-zA-Z\s]', ' ', text)
+        """한글 텍스트 전처리"""
+        # 영어와 숫자 제거
+        text = re.sub(r'[a-zA-Z0-9]+', ' ', text)
+        # 특수문자 제거
+        text = re.sub(r'[^\w\s가-힣]', ' ', text)
         # 공백으로 분리하여 단어 목록 생성
         words = text.split()
-        # 2글자 이상인 단어만 선택
-        words = [word for word in words if len(word) >= 2]
+        # 2글자 이상인 한글 단어만 선택
+        words = [word for word in words if len(word) >= 2 and re.match(r'^[가-힣]+$', word)]
         return ' '.join(words)
 
     def create_mask(self, width, height, mask_type):

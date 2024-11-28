@@ -55,24 +55,41 @@ pip install -r requirements.txt
 ```
 
 ### 5. 실행 방법
-1. 백엔드 서버 실행:
-   ```bash
-   # 프로젝트 루트 디렉토리에서
-   python -m backend.main
-   ```
 
-2. 프론트엔드 실행:
+#### 백엔드 서버 실행
+1. 프로젝트 루트 디렉토리에서 다음 명령어를 실행합니다:
    ```bash
-   # 새로운 터미널 창에서
-   # frontend 폴더로 이동
+   # 방법 1: Python 모듈로 실행
+   python -m backend.main
+
+   # 방법 2: 직접 실행
+   python backend/main.py
+   ```
+2. 서버가 성공적으로 시작되면 콘솔에 "Server running on http://localhost:5000" 메시지가 표시됩니다.
+
+#### Electron 앱 실행
+1. 새로운 터미널 창을 엽니다 (기존 서버는 실행 중인 상태로 둡니다).
+2. frontend 폴더로 이동합니다:
+   ```bash
    cd frontend
-   
-   # npm 패키지 설치 (처음 한 번만)
+   ```
+3. 처음 실행하는 경우, 필요한 npm 패키지를 설치합니다:
+   ```bash
    npm install
-   
-   # Electron 앱 실행
+   ```
+4. Electron 앱을 실행합니다:
+   ```bash
+   # 개발 모드로 실행
+   npm run dev
+
+   # 또는 프로덕션 모드로 실행
    npm start
    ```
+
+#### 주의사항
+- 백엔드 서버가 실행되고 있는 상태에서 Electron 앱을 실행해야 합니다.
+- 서버 포트(5000)가 이미 사용 중인 경우, 다른 프로그램을 종료하거나 포트를 변경해야 할 수 있습니다.
+- 개발 중에는 `npm run dev` 명령어를 사용하면 코드 변경 사항이 실시간으로 반영됩니다.
 
 ## 프로젝트 구조
 

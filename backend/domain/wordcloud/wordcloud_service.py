@@ -5,6 +5,9 @@ import os
 import numpy as np
 from fontTools.ttLib import TTFont
 from PIL import Image, ImageDraw
+from typing import Optional
+import base64
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -105,44 +108,61 @@ class WordCloudService:
         
         return mask_array
 
-    def create_wordcloud(self, request: WordCloudRequest):
-        """워드클라우드 생성 서비스"""
+    def create_wordcloud(self, text: str, config: Optional[WordCloudConfig] = None):
+        """
+        워드클라우드를 생성하고 이미지와 단어 데이터를 반환합니다.
+        
+        Args:
+            text: 워드클라우드를 생성할 텍스트
+            config: 워드클라우드 생성 설정
+            
+        Returns:
+            워드클라우드 정보를 담은 딕셔너리
+        """
         try:
-            self.logger.debug(f"워드클라우드 생성 요청: {request}")
+            self.logger.info("워드클라우드 생성 시작")
+            self.logger.debug(f"입력 텍스트: {text[:100]}...")  # 처음 100자만 로깅
+            
+            # 기본 설정값 사용
+            if config is None:
+                config = WordCloudConfig(text=text)
+                self.logger.debug("기본 설정값 사용")
+            else:
+                config.text = text  # 입력받은 텍스트로 설정
+                self.logger.debug(f"사용자 설정값 사용: {config}")
             
             # 텍스트 전처리
-            text = self._preprocess_text(request.text)
+            text = self._preprocess_text(text)
+            self.logger.debug(f"전처리된 텍스트: {text[:100]}...")
+            
             if not text.strip():
                 raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
             
-            self.logger.debug(f"전처리된 텍스트: {text[:100]}...")
-            
             # 폰트 경로 가져오기
-            font_path = self._get_font_path(request.font, text)
-            self.logger.debug(f"폰트 경로: {font_path}")
+            font_path = self._get_font_path(config.font or "malgun.ttf", text)
+            self.logger.debug(f"사용할 폰트 경로: {font_path}")
+            config.font_path = font_path
             
             # 마스크 생성
-            mask = self._create_mask(request.mask_type, request.width, request.height)
-            self.logger.debug(f"마스크 생성 완료: 타입={request.mask_type}")
-            
-            # WordCloud 설정
-            config = WordCloudConfig(
-                text=text,
-                font_path=font_path,
-                width=request.width,
-                height=request.height,
-                background_color=request.background_color,
-                max_words=request.max_words,
-                mask=mask,
-                color_func=request.color_func
-            )
-            
+            mask = self._create_mask(config.mask_type, config.width, config.height)
+            self.logger.debug(f"마스크 생성 완료: 타입={config.mask_type}, 크기={mask.shape if mask is not None else 'None'}")
+            config.mask = mask  # 마스크 설정
+                
             # 워드클라우드 생성
-            self.logger.debug("워드클라우드 생성 시작")
             image = self.generator.generate(config)
             self.logger.debug("워드클라우드 생성 완료")
             
-            return image
+            # 이미지를 base64로 변환
+            buffered = BytesIO()
+            image.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            
+            self.logger.info("워드클라우드 생성 및 변환 완료")
+            
+            return {
+                'image': img_str,
+                'words': []  # 단어 데이터는 나중에 추가
+            }
             
         except Exception as e:
             self.logger.error(f"워드클라우드 생성 중 오류 발생: {str(e)}")

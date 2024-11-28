@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const colorFuncSelect = document.getElementById('color-func');
     const maskTypeSelect = document.getElementById('mask-type');
     const fontSelect = document.getElementById('fontSelect');
+    const excelDownloadBtn = document.getElementById('excel-download-btn');
 
     // API 기본 URL 설정
     const API_BASE_URL = 'http://localhost:8000';
@@ -108,61 +109,84 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 워드클라우드 생성 이벤트 리스너
     generateBtn.addEventListener('click', async () => {
-        console.log('Generate button clicked'); // 디버그 로그
+        console.log('Generate button clicked');
         const text = textInput.value.trim();
+        
         if (!text) {
             showError('텍스트를 입력해주세요.');
             return;
         }
-
+        
         try {
-            showLoading(true);
             clearError();
-
-            console.log('Sending request to API...'); // 디버그 로그
-            const requestData = {
-                text: text,
-                background_color: backgroundColorSelect.value,
-                color_func: colorFuncSelect.value,
-                mask_type: maskTypeSelect.value,
-                width: 800,
-                height: 400,
-                max_words: 200,
-                font: fontSelect.value
-            };
-            
-            console.log('Request data:', requestData); // 디버그 로그
+            showLoading(true);
+            downloadBtn.style.display = 'none';
+            excelDownloadBtn.style.display = 'none';
             
             const response = await fetch(`${API_BASE_URL}/api/generate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(requestData)
+                body: JSON.stringify({
+                    text: text,
+                    config: {
+                        font: fontSelect.value,
+                        background_color: backgroundColorSelect.value,
+                        color_func: colorFuncSelect.value,
+                        mask_type: maskTypeSelect.value,
+                        width: 800,
+                        height: 400,
+                        max_words: 200
+                    }
+                })
             });
-
-            console.log('Response received:', response.status); // 디버그 로그
-
+            
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || '워드클라우드 생성에 실패했습니다.');
+                throw new Error('워드클라우드 생성에 실패했습니다.');
             }
-
-            const blob = await response.blob();
-            console.log('Blob created:', blob.size, 'bytes'); // 디버그 로그
             
-            const imageUrl = URL.createObjectURL(blob);
-            console.log('Image URL created:', imageUrl); // 디버그 로그
+            // JSON 데이터 가져오기
+            const data = await response.json();
             
-            // 이미지 요소 표시 설정
-            wordcloudImage.src = imageUrl;
+            // Base64 이미지 데이터를 이미지로 표시
+            wordcloudImage.src = `data:image/png;base64,${data.image}`;
             wordcloudImage.style.display = 'block';
-            console.log('Image display style:', wordcloudImage.style.display); // 디버그 로그
             
-            // 다운로드 버튼 표시
-            downloadBtn.style.display = 'inline-block';
+            // 다운로드 버튼 표시 및 이벤트 핸들러 설정
+            downloadBtn.style.display = 'block';
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.href = wordcloudImage.src;
+                link.download = 'wordcloud.png';
+                link.click();
+            };
+            
+            // 단어 빈도수 테이블 업데이트
+            updateWordFrequencyTable(data.words);
+            
+            // 엑셀 다운로드 버튼 표시 및 이벤트 핸들러 설정
+            excelDownloadBtn.style.display = 'block';
+            excelDownloadBtn.onclick = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/download/${data.id}`);
+                    if (!response.ok) throw new Error('엑셀 파일 다운로드에 실패했습니다.');
+                    
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('content-disposition').split('filename=')[1].replace(/"/g, '');
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
         } catch (error) {
-            console.error('API 호출 중 오류:', error);
             showError(error.message);
         } finally {
             showLoading(false);
@@ -181,9 +205,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     backgroundColorSelect.addEventListener('change', updatePreview);
     colorFuncSelect.addEventListener('change', updatePreview);
 
+    let wordFrequencyData = [];
+
+    function updateWordFrequencyTable(data) {
+        wordFrequencyData = data;
+        renderWordFrequencyTable();
+    }
+
+    function renderWordFrequencyTable() {
+        const tbody = document.querySelector('#word-frequency-table tbody');
+        const searchTerm = document.querySelector('#word-search').value.toLowerCase();
+        const sortBy = document.querySelector('#sort-select').value;
+
+        // 데이터 필터링 및 정렬
+        let filteredData = wordFrequencyData.filter(item => 
+            item.word.toLowerCase().includes(searchTerm)
+        );
+
+        // 정렬
+        filteredData.sort((a, b) => {
+            if (sortBy === 'frequency') {
+                return b.frequency - a.frequency;
+            } else {
+                return a.word.localeCompare(b.word);
+            }
+        });
+
+        // 테이블 업데이트
+        tbody.innerHTML = '';
+        filteredData.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.word}</td>
+                <td>${item.frequency}회</td>
+                <td>${item.percentage.toFixed(2)}%</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // 이벤트 리스너 추가
+    document.querySelector('#word-search').addEventListener('input', renderWordFrequencyTable);
+    document.querySelector('#sort-select').addEventListener('change', renderWordFrequencyTable);
+
     // 페이지 로드 시 초기화
     loadSystemFonts();
     updatePreview();
     showLoading(false);
     downloadBtn.style.display = 'none';
+    excelDownloadBtn.style.display = 'none';
 });
