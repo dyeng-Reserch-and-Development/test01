@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class WordCloudService:
     def __init__(self):
-        self.generator = WordCloudGenerator()
+        self.generator = WordClofudGenerator()
         self.logger = logging.getLogger(__name__)
     
     def _preprocess_text(self, text: str) -> str:
@@ -27,7 +27,7 @@ class WordCloudService:
         font_dir = r"C:\Windows\Fonts"
         
         # 기본 한글 폰트 (폴백용)
-        default_korean_font = os.path.join(font_dir, "malgun.ttf")
+        default_korean_font = os.path.join(font_dir, "HYPost.ttf")
         
         self.logger.debug(f"요청된 폰트: {font_name}")
         
