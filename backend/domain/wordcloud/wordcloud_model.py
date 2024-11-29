@@ -143,7 +143,7 @@ class WordCloudGenerator:
             image = wc.to_image()
             
             return image
-            
+             
         except Exception as e:
             self.logger.error(f"워드클라우드 생성 중 오류 발생: {str(e)}")
             raise Exception(f"워드클라우드 생성 실패: {str(e)}")
