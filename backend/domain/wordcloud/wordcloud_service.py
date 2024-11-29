@@ -17,14 +17,6 @@ class WordCloudService:
         self.logger = logging.getLogger(__name__)
         self._last_word_frequency = None  # 마지막 단어 빈도수 데이터 저장
     
-    def _preprocess_text(self, text: str) -> str:
-        """텍스트 전처리"""
-        # 영어와 숫자 제거
-        text = re.sub(r'[a-zA-Z0-9]+', '', text)
-        # 특수문자 제거
-        text = re.sub(r'[^\w\s]', '', text)
-        return text
-
     def _get_font_path(self, font_name: str, text: str) -> str:
         """폰트 경로 반환"""
         # 기본 폰트 디렉토리
@@ -132,45 +124,9 @@ class WordCloudService:
                 config.text = text  # 입력받은 텍스트로 설정
                 self.logger.debug(f"사용자 설정값 사용: {config}")
             
-            # 텍스트 전처리
-            processed_text = self._preprocess_text(text)
-            self.logger.debug(f"전처리된 텍스트: {processed_text[:100]}...")
-            
-            if not processed_text.strip():
+            # 텍스트 전처리 (WordCloudGenerator에서 수행)
+            if not text.strip():
                 raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
-            
-            # 단어 빈도수 계산
-            words = processed_text.split()
-            word_counts = {}
-            total_words = 0
-            for word in words:
-                if len(word) >= 2:  # 2글자 이상인 단어만 포함
-                    word_counts[word] = word_counts.get(word, 0) + 1
-                    total_words += 1
-            
-            # 빈도수 기준으로 정렬
-            sorted_words = sorted(word_counts.items(), key=lambda x: (-x[1], x[0]))
-            word_frequency = [
-                {
-                    "word": word,
-                    "frequency": count,
-                    "percentage": (count / total_words * 100) if total_words > 0 else 0
-                }
-                for word, count in sorted_words
-            ]
-            
-            # 단어 빈도수 데이터 저장
-            word_frequency_data = [
-                {
-                    "word": word,
-                    "frequency": freq,
-                    "percentage": round((freq / total_words) * 100, 2)
-                }
-                for word, freq in word_counts.items()
-            ]
-            
-            # 데이터 저장
-            self._last_word_frequency = word_frequency_data
             
             # 폰트 경로 가져오기
             font_path = self._get_font_path(config.font or "malgun.ttf", text)
@@ -197,6 +153,22 @@ class WordCloudService:
             
             if not img_base64:
                 raise ValueError("이미지 생성 실패: base64 변환 결과가 비어있습니다")
+            
+            # Generator에서 단어 빈도수 가져오기
+            word_counts = self.generator.get_last_word_counts()
+            if word_counts:
+                total_words = sum(word_counts.values())
+                word_frequency = [
+                    {
+                        "word": word,
+                        "frequency": count,
+                        "percentage": round((count / total_words * 100), 2)  # 소수점 2자리까지 표시
+                    }
+                    for word, count in sorted(word_counts.items(), key=lambda x: (-x[1], x[0]))
+                ]
+                self._last_word_frequency = word_frequency
+            else:
+                word_frequency = []
                 
             return {
                 'success': True,

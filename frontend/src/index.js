@@ -310,18 +310,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // 단어 빈도수 테이블 업데이트
-        const wordFrequencyData = data.words;
-        const tbody = document.querySelector('#word-frequency-table tbody');
-        tbody.innerHTML = '';
-        wordFrequencyData.forEach(item => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${item.word}</td>
-                <td>${item.frequency}회</td>
-                <td>${item.percentage.toFixed(2)}%</td>
-            `;
-            tbody.appendChild(row);
-        });
+        if (data.words) {
+            updateWordFrequencyTable(data.words);  // 단어 빈도수 데이터 업데이트
+        }
     }
 
     // 엑셀 다운로드 버튼 이벤트 핸들러 설정

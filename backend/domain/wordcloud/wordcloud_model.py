@@ -37,6 +37,7 @@ class WordCloudGenerator:
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self._last_word_counts = None  # 마지막 단어 빈도수 저장
 
     def _create_mask(self, mask_type: str, width: int, height: int) -> np.ndarray:
         """마스크 이미지 생성"""
@@ -107,6 +108,10 @@ class WordCloudGenerator:
                 return "black"
             return single_color
     
+    def get_last_word_counts(self) -> dict:
+        """마지막으로 생성된 워드클라우드의 단어 빈도수 반환"""
+        return self._last_word_counts or {}
+    
     def generate(self, config: WordCloudConfig) -> Image:
         """워드클라우드 이미지 생성"""
         try:
@@ -126,6 +131,7 @@ class WordCloudGenerator:
             # 단어 빈도수 계산
             words = text.split()
             word_counts = Counter(words)
+            self._last_word_counts = dict(word_counts)  # 빈도수 저장
             self.logger.debug(f"단어 빈도수 상위 10개: {dict(word_counts.most_common(10))}")
             
             # 색상 함수 가져오기
