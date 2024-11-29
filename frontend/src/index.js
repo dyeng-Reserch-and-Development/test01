@@ -117,40 +117,57 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch(`${API_BASE_URL}/api/uploaded-files`);
             const result = await response.json();
             
-            if (result.status === 'success') {
-                const fileList = document.getElementById('uploadedFiles');
-                fileList.innerHTML = '';
-                
+            const fileListElement = document.getElementById('uploadedFiles');
+            fileListElement.innerHTML = '';
+            
+            if (result.data && result.data.length > 0) {
                 result.data.forEach(file => {
-                    const item = document.createElement('div');
-                    item.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    item.innerHTML = `
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    fileItem.innerHTML = `
                         <span class="file-name">${file.filename}</span>
-                        <button class="btn btn-sm btn-primary select-file" data-file-id="${file.file_id}">
-                            선택
+                        <button class="btn btn-sm btn-danger delete-file" data-file-id="${file.file_id}">
+                            삭제
                         </button>
                     `;
-                    fileList.appendChild(item);
-                });
+                    fileListElement.appendChild(fileItem);
 
-                // 파일 선택 버튼에 이벤트 리스너 추가
-                document.querySelectorAll('.select-file').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const fileId = e.target.dataset.fileId;
-                        currentFileId = fileId;
-                        
-                        // 모든 파일 항목에서 활성 클래스 제거
-                        document.querySelectorAll('.list-group-item').forEach(item => {
-                            item.classList.remove('active');
-                        });
-                        
-                        // 선택된 파일 항목에 활성 클래스 추가
-                        e.target.closest('.list-group-item').classList.add('active');
+                    // 삭제 버튼에 이벤트 리스너 추가
+                    const deleteButton = fileItem.querySelector('.delete-file');
+                    deleteButton.addEventListener('click', () => {
+                        if (confirm('정말 이 파일을 삭제하시겠습니까?')) {
+                            handleDeleteFile(file.file_id);
+                        }
                     });
                 });
+            } else {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'list-group-item text-muted';
+                emptyMessage.textContent = '업로드된 파일이 없습니다.';
+                fileListElement.appendChild(emptyMessage);
             }
         } catch (error) {
-            console.error('Error updating file list:', error);
+            console.error('파일 목록 업데이트 중 오류:', error);
+        }
+    }
+
+    // 파일 삭제 처리
+    async function handleDeleteFile(fileId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/delete-file/${fileId}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+            
+            if (result.status === 'error') {
+                throw new Error(result.message);
+            }
+            
+            // 파일 목록 업데이트
+            await updateFileList();
+        } catch (error) {
+            console.error('파일 삭제 중 오류:', error);
+            showError('파일 삭제 중 오류가 발생했습니다.');
         }
     }
 
@@ -379,38 +396,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('파일 업로드 중 오류:', error);
             showError('파일 업로드 중 오류가 발생했습니다.');
-        }
-    }
-
-    // 업로드된 파일 목록 업데이트
-    async function updateFileList() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/uploaded-files`);
-            const result = await response.json();
-            
-            const fileListElement = document.getElementById('uploadedFiles');
-            fileListElement.innerHTML = '';
-            
-            if (result.data && result.data.length > 0) {
-                result.data.forEach(file => {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    fileItem.innerHTML = `
-                        <span class="file-name">${file.filename}</span>
-                        <button class="btn btn-sm btn-primary select-file" data-file-id="${file.file_id}">
-                            선택
-                        </button>
-                    `;
-                    fileListElement.appendChild(fileItem);
-                });
-            } else {
-                const emptyMessage = document.createElement('div');
-                emptyMessage.className = 'list-group-item text-muted';
-                emptyMessage.textContent = '업로드된 파일이 없습니다.';
-                fileListElement.appendChild(emptyMessage);
-            }
-        } catch (error) {
-            console.error('파일 목록 업데이트 중 오류:', error);
         }
     }
 });

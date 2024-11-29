@@ -254,6 +254,24 @@ async def get_all_files_content():
         logger.error(f"Error getting all files content: {str(e)}")
         return {"status": "error", "message": str(e)}
 
+@router.delete("/delete-file/{file_id}")
+async def delete_file(file_id: str):
+    """업로드된 파일 삭제"""
+    try:
+        if file_id not in uploaded_files:
+            return {"status": "error", "message": "파일을 찾을 수 없습니다."}
+        
+        # 파일 삭제
+        del uploaded_files[file_id]
+        
+        return {
+            "status": "success",
+            "message": "파일이 삭제되었습니다."
+        }
+    except Exception as e:
+        logger.error(f"Error deleting file: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
 @router.get("/health")
 async def health_check():
     return {"status": "healthy"}
