@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import logging
 import os
 from pathlib import Path
+
+# 데이터베이스 초기화 임포트
+from .infrastructure.db_config import init_db
 
 # 로깅 설정
 logging.basicConfig(level=logging.DEBUG)
@@ -19,6 +23,13 @@ logger.debug(f"Frontend path: {FRONTEND_PATH}")
 # FastAPI 앱 생성
 app = FastAPI()
 
+# 앱 시작 시 데이터베이스 초기화
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Initializing database...")
+    init_db()
+    logger.info("Database initialized successfully")
+
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +37,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"]  # Content-Disposition 헤더 노출 추가
 )
 
 # API 라우터 등록

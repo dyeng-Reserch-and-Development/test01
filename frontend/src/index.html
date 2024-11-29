@@ -54,9 +54,37 @@
         </div>
 
         <div class="result-section">
-            <div class="image-container">
-                <img id="wordcloud-image" alt="워드클라우드" style="display: none;">
-                <button id="download-btn" class="download-btn" style="display: none;">다운로드</button>
+            <div class="results-container">
+                <div class="image-container">
+                    <img id="wordcloud-image" alt="워드클라우드" style="display: none;">
+                    <button id="download-btn" class="download-btn" style="display: none;">다운로드</button>
+                </div>
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>단어 빈도수 분석</h3>
+                        <div class="table-controls">
+                            <input type="text" id="word-search" placeholder="단어 검색...">
+                            <select id="sort-select">
+                                <option value="frequency">빈도수순</option>
+                                <option value="word">가나다순</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="word-frequency-table">
+                            <thead>
+                                <tr>
+                                    <th>단어</th>
+                                    <th>빈도수</th>
+                                    <th>퍼센트</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="excel-download-btn" class="excel-download-btn" style="display: none;">엑셀 다운로드</button>
+                </div>
             </div>
             <div id="loading-spinner" style="display: none;">
                 <div class="spinner"></div>
