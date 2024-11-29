@@ -189,6 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const backgroundColor = document.getElementById('background-color').value;
             const fontFamily = document.getElementById('fontSelect').value;
             const maskType = document.getElementById('mask-type').value;
+            const colorFunc = document.getElementById('color-func').value;
 
             const response = await fetch(`${API_BASE_URL}/api/generate`, {
                 method: 'POST',
@@ -199,7 +200,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     text: content,
                     background_color: backgroundColor,
                     font: fontFamily,
-                    mask_type: maskType
+                    mask_type: maskType,
+                    color_func: colorFunc
                 }),
             });
 
