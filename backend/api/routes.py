@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
@@ -21,6 +21,11 @@ from backend.domain.wordcloud.wordcloud_model import WordCloudRequest, WordCloud
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# 업로드된 파일을 저장할 딕셔너리 초기화
+uploaded_files = {}
+
+# 워드클라우드 서비스 인스턴스 생성
 wordcloud_service = WordCloudService()
 
 class FontInfo(BaseModel):
@@ -146,6 +151,108 @@ async def download_excel(filename: str):
     except Exception as e:
         logger.error(f"엑셀 파일 생성 중 오류 발생: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/upload-wordcloud")
+async def upload_wordcloud(
+    file: UploadFile = File(...),
+    background_color: str = Form(None),
+    width: int = Form(800),
+    height: int = Form(400),
+    font: str = Form(None),
+    mask_type: str = Form("rectangle")
+):
+    try:
+        # 파일 내용 읽기
+        content = await file.read()
+        text = content.decode('utf-8')
+        
+        # 설정 생성
+        config = WordCloudConfig(
+            text=text,  # 파일 내용을 text 필드에 설정
+            background_color=background_color,
+            width=width,
+            height=height,
+            font=font,
+            mask_type=mask_type
+        )
+        
+        # 워드클라우드 생성
+        result = wordcloud_service.create_wordcloud(text, config)
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error processing file upload: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+@router.post("/upload-file")
+async def upload_file(file: UploadFile = File(...)):
+    """파일 업로드만 처리하는 엔드포인트"""
+    try:
+        content = await file.read()
+        text = content.decode('utf-8')
+        
+        # 파일 내용을 메모리에 저장
+        file_id = str(len(uploaded_files) + 1)  # 간단한 ID 생성
+        uploaded_files[file_id] = {
+            "filename": file.filename,
+            "content": text
+        }
+        
+        return {
+            "status": "success",
+            "data": {
+                "file_id": file_id,
+                "filename": file.filename
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error uploading file: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+@router.get("/uploaded-files")
+async def get_uploaded_files():
+    """업로드된 파일 목록 반환"""
+    return {
+        "status": "success",
+        "data": [
+            {"file_id": k, "filename": v["filename"]}
+            for k, v in uploaded_files.items()
+        ]
+    }
+
+@router.get("/file-content/{file_id}")
+async def get_file_content(file_id: str):
+    """특정 파일의 내용 반환"""
+    if file_id not in uploaded_files:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return {
+        "status": "success",
+        "data": {
+            "content": uploaded_files[file_id]["content"],
+            "filename": uploaded_files[file_id]["filename"]
+        }
+    }
+
+@router.get("/all-files-content")
+async def get_all_files_content():
+    """모든 업로드된 파일의 내용을 합쳐서 반환"""
+    try:
+        if not uploaded_files:
+            return {"status": "error", "message": "업로드된 파일이 없습니다."}
+        
+        # 모든 파일의 내용을 하나의 문자열로 합침
+        combined_content = "\n".join(file["content"] for file in uploaded_files.values())
+        
+        return {
+            "status": "success",
+            "data": {
+                "content": combined_content,
+                "file_count": len(uploaded_files)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting all files content: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 @router.get("/health")
 async def health_check():

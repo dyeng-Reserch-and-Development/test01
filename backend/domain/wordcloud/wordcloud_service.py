@@ -211,6 +211,33 @@ class WordCloudService:
                 'error': str(e)
             }
 
+    def process_text_file(self, file) -> dict:
+        """
+        텍스트 파일을 처리하여 워드클라우드를 생성합니다.
+        
+        Args:
+            file: 업로드된 텍스트 파일 객체
+            
+        Returns:
+            워드클라우드 정보를 담은 딕셔너리
+        """
+        try:
+            # 파일 확장자 검사
+            if not file.filename.lower().endswith('.txt'):
+                raise ValueError("Only .txt files are allowed")
+            
+            # 파일 내용 읽기
+            content = file.read().decode('utf-8')
+            
+            # 워드클라우드 생성
+            return self.create_wordcloud(content)
+            
+        except UnicodeDecodeError:
+            raise ValueError("Invalid text file encoding. Please ensure the file is UTF-8 encoded.")
+        except Exception as e:
+            self.logger.error(f"Error processing text file: {str(e)}")
+            raise
+
     def get_last_word_frequency(self):
         """마지막으로 생성된 워드클라우드의 단어 빈도수 데이터 반환"""
         return self._last_word_frequency
