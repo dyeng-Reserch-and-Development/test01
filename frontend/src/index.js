@@ -225,6 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             
             if (result.success) {
+                console.log('워드클라우드 생성 응답:', result);  // 전체 응답 로깅
                 updateWordCloud(result.data);
                 clearError();
             } else {
@@ -255,6 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let wordFrequencyData = [];
 
     function updateWordFrequencyTable(data) {
+        console.log('테이블 업데이트 데이터:', data);  // 테이블 데이터 로깅
         wordFrequencyData = data;
         renderWordFrequencyTable();
     }
@@ -296,6 +298,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('#sort-select').addEventListener('change', renderWordFrequencyTable);
 
     function updateWordCloud(data) {
+        console.log('워드클라우드 데이터 업데이트:', data);  // 데이터 로깅
+        
         // 이미지 표시
         const wordcloudImage = document.getElementById('wordcloud-image');
         wordcloudImage.src = `data:image/png;base64,${data.image}`;
@@ -304,14 +308,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 다운로드 버튼 활성화
         const downloadBtn = document.getElementById('download-btn');
         downloadBtn.style.display = 'inline-block';
-        if (data.words && data.words.length > 0) {
+        
+        // 단어 빈도수 데이터가 있으면 엑셀 다운로드 버튼 활성화
+        if (data.word_frequency && data.word_frequency.length > 0) {
+            console.log('단어 빈도수 데이터:', data.word_frequency);  // 단어 빈도수 데이터 로깅
             const excelDownloadBtn = document.getElementById('excel-download-btn');
             excelDownloadBtn.style.display = 'inline-block';
         }
         
         // 단어 빈도수 테이블 업데이트
-        if (data.words) {
-            updateWordFrequencyTable(data.words);  // 단어 빈도수 데이터 업데이트
+        if (data.word_frequency) {
+            updateWordFrequencyTable(data.word_frequency);
         }
     }
 

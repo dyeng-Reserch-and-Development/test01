@@ -56,14 +56,16 @@ async def generate_wordcloud(request: WordCloudRequest):
         result = wordcloud_service.create_wordcloud(request.text, config)
         
         if not result['success']:
-            raise HTTPException(status_code=500, detail=result.get('error', '워드클라우드 생성 실패'))
+            raise HTTPException(status_code=500, detail=result.get('message', '워드클라우드 생성 실패'))
             
         # JSON 응답 반환
         return {
             "success": True,
+            "message": result.get('message', '워드클라우드가 생성되었습니다.'),
             "data": {
-                "image": result['image'],
-                "words": result['words']
+                "wordcloud_id": result['data']['wordcloud_id'],
+                "image": result['data']['image'],
+                "word_frequency": result['data']['word_frequency']
             }
         }
         
