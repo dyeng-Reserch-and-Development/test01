@@ -9,6 +9,9 @@ from typing import Optional
 import base64
 from io import BytesIO
 from backend.infrastructure.wordcloud_repository import WordCloudRepository
+import sys
+from bareunpy import Tagger
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +21,18 @@ class WordCloudService:
         self.logger = logging.getLogger(__name__)
         self._last_word_frequency = None  # 마지막 단어 빈도수 데이터 저장
         self.repository = WordCloudRepository()
+    
+    def _preprocess_text(self, text: str) -> str:
+        """텍스트 전처리"""
+        # 영어와 숫자 제거
+        text = re.sub(r'[a-zA-Z0-9]+', '', text)
+        # 특수문자 제거
+        text = re.sub(r'[^\w\s]', '', text)
+
+
+        self.logger.info("로그 드가즈아" , text)
+
+        return text
 
     def _get_font_path(self, font_name: str, text: str) -> str:
         """폰트 경로 반환"""
@@ -130,6 +145,64 @@ class WordCloudService:
             if not text.strip():
                 raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
             
+
+            # 텍스트 전처리
+
+
+            # 그냥 서비스단에서 심플 전처리
+            processed_text = self._preprocess_text(text)
+            self.logger.info("이거 뭔데" , processed_text)
+
+            self.logger.debug(f"전처리된 텍스트: {processed_text[:100]}...")
+            
+            if not processed_text.strip():
+                raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
+            
+            # 단어 빈도수 계산
+
+
+            API_KEY="koba-5E34BFY-27YUXYI-QW4U6KY-CCEEYIA" # <- 본인의 API KEY로 교체 
+
+            # 방금 설치한 자신의 호스트에 접속합니다.
+            tagger = Tagger(API_KEY, 'localhost',5757)
+            # 결과를 가져옵니다.
+
+            # words = processed_text.split()
+            res = tagger.tags([text])
+            words = res.nouns()
+            self.logger.info("이거 뭔데2" , words)
+            word_counts = {}
+            total_words = 0
+            for word in words:
+                if len(word) >= 1:  # 1글자 이상인 단어만 포함
+                    word_counts[word] = word_counts.get(word, 0) + 1
+                    total_words += 1
+            
+            # 빈도수 기준으로 정렬
+            sorted_words = sorted(word_counts.items(), key=lambda x: (-x[1], x[0]))
+            word_frequency = [
+                {
+                    "word": word,
+                    "frequency": count,
+                    "percentage": (count / total_words * 100) if total_words > 0 else 0
+                }
+                for word, count in sorted_words
+            ]
+            
+            # 단어 빈도수 데이터 저장
+            word_frequency_data = [
+                {
+                    "word": word,
+                    "frequency": freq,
+                    "percentage": round((freq / total_words) * 100, 2)
+                }
+                for word, freq in word_counts.items()
+            ]
+            
+            # 데이터 저장
+            self._last_word_frequency = word_frequency_data
+            
+
             # 폰트 경로 가져오기
             font_path = self._get_font_path(config.font or "malgun.ttf", text)
             self.logger.debug(f"사용할 폰트 경로: {font_path}")

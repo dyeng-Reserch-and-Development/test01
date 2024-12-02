@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMessage.style.display = 'none';
     }
 
+
     // 폰트 목록을 가져오는 함수
     async function loadSystemFonts() {
         try {
@@ -241,6 +242,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     generateBtn.addEventListener('click', generateWordCloud);
 
+    async function testB() {
+        try{
+            const response = await fetch(`${API_BASE_URL}/api/test`);
+            console.log(typeof(response));
+            console.log(response);
+            const data = await response.json();
+            console.log(data);
+        } catch(err) {
+            console.log(`에러 : ${err}`);
+        }
+        
+    }
+
     // 다운로드 버튼 이벤트 리스너
     downloadBtn.addEventListener('click', () => {
         const link = document.createElement('a');
@@ -371,6 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadSystemFonts();
     updatePreview();
     showLoading(false);
+    testB();
     downloadBtn.style.display = 'none';
     excelDownloadBtn.style.display = 'none';
 

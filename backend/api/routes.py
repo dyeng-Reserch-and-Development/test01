@@ -10,6 +10,10 @@ from pathlib import Path
 import base64
 import pandas as pd
 
+import sys
+import bareunpy as brn
+import google.protobuf.text_format as tf
+
 # 프로젝트 루트 디렉토리를 Python 경로에 추가
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
@@ -18,6 +22,7 @@ from backend.domain.wordcloud.wordcloud_service import WordCloudService
 from backend.domain.wordcloud.wordcloud_model import WordCloudRequest, WordCloudConfig
 
 # 로깅 설정
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -35,6 +40,8 @@ class FontInfo(BaseModel):
 
 class FontResponse(BaseModel):
     fonts: List[FontInfo]
+
+
 
 @router.post("/generate")
 async def generate_wordcloud(request: WordCloudRequest):
@@ -277,3 +284,17 @@ async def delete_file(file_id: str):
 @router.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@router.get("/test")
+async def test():
+
+
+# 아래에 "https://bareun.ai/"에서 이메일 인증 후 발급받은 API KEY("koba-...")를 입력해주세요. "로그인-내정보 확인"
+    API_KEY = "koba-5E34BFY-27YUXYI-QW4U6KY-CCEEYIA" # <- 본인의 API KEY로 교체 
+    t = brn.Tagger(API_KEY, "localhost", 5757)
+    res = t.tags(["안녕하세요. 정말 좋은 날씨네요."])
+    m = res.msg()
+    tf.PrintMessage(m, out=sys.stdout, as_utf8=True)
+    return res.as_json()
+
