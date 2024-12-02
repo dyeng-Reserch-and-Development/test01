@@ -8,10 +8,8 @@ from PIL import Image, ImageDraw
 from typing import Optional
 import base64
 from io import BytesIO
-
 import sys
-import bareunpy as brn
-import google.protobuf.text_format as tf
+from bareunpy import Tagger
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +26,10 @@ class WordCloudService:
         # 특수문자 제거
         text = re.sub(r'[^\w\s]', '', text)
 
-        self.logger.info("로그 확인1" , text)
-        API_KEY = "koba-5E34BFY-27YUXYI-QW4U6KY-CCEEYIA" # <- 본인의 API KEY로 교체 
-        t = brn.Tagger(API_KEY, "localhost", 5757)
-        res = t.tags([text])
-        va = res.nouns()
-        self.logger.info("로그 확인2" , ','.join(va))
-        tf.PrintMessage(va, out=sys.stdout, as_utf8=True)
-        return ','.join(va)
-        # return res.as_json()
-        # return text
+
+        self.logger.info("로그 드가즈아" , text)
+
+        return text
 
     def _get_font_path(self, font_name: str, text: str) -> str:
         """폰트 경로 반환"""
@@ -45,7 +37,7 @@ class WordCloudService:
         font_dir = r"C:\Windows\Fonts"
         
         # 기본 한글 폰트 (폴백용)
-        default_korean_font = os.path.join(font_dir, "HYPost.ttf")
+        default_korean_font = os.path.join(font_dir, "malgun.ttf")
         
         self.logger.debug(f"요청된 폰트: {font_name}")
         
@@ -147,23 +139,39 @@ class WordCloudService:
                 self.logger.debug(f"사용자 설정값 사용: {config}")
             
             # 텍스트 전처리
+
+
+
             processed_text = self._preprocess_text(text)
+            self.logger.info("이거 뭔데" , processed_text)
+
             self.logger.debug(f"전처리된 텍스트: {processed_text[:100]}...")
             
             if not processed_text.strip():
                 raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
             
             # 단어 빈도수 계산
+
+
+            API_KEY="koba-5E34BFY-27YUXYI-QW4U6KY-CCEEYIA" # <- 본인의 API KEY로 교체 
+
+            # 방금 설치한 자신의 호스트에 접속합니다.
+            tagger = Tagger(API_KEY, 'localhost',5757)
+            # 결과를 가져옵니다.
+
             # words = processed_text.split()
+            res = tagger.tags([text])
+            words = res.nouns()
+            self.logger.info("이거 뭔데2" , words)
             word_counts = {}
             total_words = 0
-            for word in processed_text:
+            for word in words:
                 if len(word) >= 2:  # 2글자 이상인 단어만 포함
                     word_counts[word] = word_counts.get(word, 0) + 1
                     total_words += 1
             
             # 빈도수 기준으로 정렬
-            sorted_words = sorted(processed_text.items(), key=lambda x: (-x[1], x[0]))
+            sorted_words = sorted(word_counts.items(), key=lambda x: (-x[1], x[0]))
             word_frequency = [
                 {
                     "word": word,
