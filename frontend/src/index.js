@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const textInput = document.getElementById('text-input');
+    const textInput = document.getElementById('textInput');  // ID 수정
     const generateBtn = document.getElementById('generate-btn');
     const wordcloudImage = document.getElementById('wordcloud-image');
     const downloadBtn = document.getElementById('download-btn');
@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const maskTypeSelect = document.getElementById('mask-type');
     const fontSelect = document.getElementById('fontSelect');
     const excelDownloadBtn = document.getElementById('excel-download-btn');
+    const uploadButton = document.getElementById('uploadButton');
+    const textFileInput = document.getElementById('textFileInput');
 
     // API 기본 URL 설정
     const API_BASE_URL = 'http://localhost:8000';
@@ -108,111 +110,137 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 워드클라우드 생성 이벤트 리스너
-    generateBtn.addEventListener('click', async () => {
-        console.log('Generate button clicked');
-        const text = textInput.value.trim();
-        
-        if (!text) {
-            showError('텍스트를 입력해주세요.');
-            return;
-        }
-        
+    let currentFileId = null;  // 현재 선택된 파일의 ID
+
+    // 파일 목록 업데이트 함수
+    async function updateFileList() {
         try {
-            clearError();
-            showLoading(true);
-            downloadBtn.style.display = 'none';
-            excelDownloadBtn.style.display = 'none';
+            const response = await fetch(`${API_BASE_URL}/api/uploaded-files`);
+            const result = await response.json();
             
+            const fileListElement = document.getElementById('uploadedFiles');
+            fileListElement.innerHTML = '';
+            
+            if (result.data && result.data.length > 0) {
+                result.data.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    fileItem.innerHTML = `
+                        <span class="file-name">${file.filename}</span>
+                        <button class="btn btn-sm btn-danger delete-file" data-file-id="${file.file_id}">
+                            삭제
+                        </button>
+                    `;
+                    fileListElement.appendChild(fileItem);
+
+                    // 삭제 버튼에 이벤트 리스너 추가
+                    const deleteButton = fileItem.querySelector('.delete-file');
+                    deleteButton.addEventListener('click', () => {
+                        if (confirm('정말 이 파일을 삭제하시겠습니까?')) {
+                            handleDeleteFile(file.file_id);
+                        }
+                    });
+                });
+            } else {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'list-group-item text-muted';
+                emptyMessage.textContent = '업로드된 파일이 없습니다.';
+                fileListElement.appendChild(emptyMessage);
+            }
+        } catch (error) {
+            console.error('파일 목록 업데이트 중 오류:', error);
+        }
+    }
+
+    // 파일 삭제 처리
+    async function handleDeleteFile(fileId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/delete-file/${fileId}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+            
+            if (result.status === 'error') {
+                throw new Error(result.message);
+            }
+            
+            // 파일 목록 업데이트
+            await updateFileList();
+        } catch (error) {
+            console.error('파일 삭제 중 오류:', error);
+            showError('파일 삭제 중 오류가 발생했습니다.');
+        }
+    }
+
+    // 파일 선택 시 자동 업로드
+    textFileInput.addEventListener('change', async (event) => {
+        const files = event.target.files;
+        for (const file of files) {
+            await handleFileUpload(file);
+        }
+        textFileInput.value = ''; // 파일 입력 초기화
+    });
+
+    // 워드클라우드 생성 버튼 클릭 이벤트
+    async function generateWordCloud() {
+        showLoading(true);
+        try {
+            const textInput = document.getElementById('textInput').value;
+            let content = textInput;
+
+            // 텍스트 입력이 없는 경우 업로드된 파일들의 내용을 사용
+            if (!textInput.trim()) {
+                const response = await fetch(`${API_BASE_URL}/api/all-files-content`);
+                const result = await response.json();
+                
+                if (result.status === 'error') {
+                    throw new Error(result.message);
+                }
+                
+                if (!result.data.content) {
+                    throw new Error('처리할 텍스트가 없습니다. 파일을 업로드하거나 텍스트를 입력해주세요.');
+                }
+                
+                content = result.data.content;
+            }
+
+            const backgroundColor = document.getElementById('background-color').value;
+            const fontFamily = document.getElementById('fontSelect').value;
+            const maskType = document.getElementById('mask-type').value;
+            const colorFunc = document.getElementById('color-func').value;
+
             const response = await fetch(`${API_BASE_URL}/api/generate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    text: text,
-                    font: fontSelect.value,
-                    background_color: backgroundColorSelect.value,
-                    color_func: colorFuncSelect.value,
-                    mask_type: maskTypeSelect.value,
-                    width: 800,
-                    height: 400,
-                    max_words: 200
-                })
+                    text: content,
+                    background_color: backgroundColor,
+                    font: fontFamily,
+                    mask_type: maskType,
+                    color_func: colorFunc
+                }),
             });
-            
-            if (!response.ok) {
-                throw new Error('워드클라우드 생성에 실패했습니다.');
-            }
-            
-            // JSON 데이터 가져오기
-            const data = await response.json();
-            
-            if (!data.success) {
-                throw new Error(data.error || '워드클라우드 생성에 실패했습니다.');
-            }
-            
-            // 이미지 표시
-            wordcloudImage.src = `data:image/png;base64,${data.data.image}`;
-            wordcloudImage.style.display = 'block';
-            
-            // 다운로드 버튼 활성화
-            downloadBtn.style.display = 'inline-block';
-            if (data.data.words && data.data.words.length > 0) {
-                excelDownloadBtn.style.display = 'inline-block';
-            }
-            
-            // 단어 빈도수 테이블 업데이트
-            updateWordFrequencyTable(data.data.words);
-            
-            // 엑셀 다운로드 버튼 이벤트 핸들러 설정
-            excelDownloadBtn.addEventListener('click', async () => {
-                try {
-                    showLoading(true);
-                    clearError();
 
-                    // 현재 시간을 파일명에 포함
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                    
-                    // 엑셀 파일 다운로드
-                    const response = await fetch(`${API_BASE_URL}/api/download/${timestamp}`, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('엑셀 파일 다운로드에 실패했습니다.');
-                    }
-                    
-                    // Blob으로 변환
-                    const blob = await response.blob();
-                    
-                    // 다운로드 링크 생성 및 클릭
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `wordcloud_frequency_${timestamp}.xlsx`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                    
-                } catch (error) {
-                    console.error('엑셀 다운로드 실패:', error);
-                    showError(`엑셀 다운로드 실패: ${error.message}`);
-                } finally {
-                    showLoading(false);
-                }
-            });
+            const result = await response.json();
             
+            if (result.success) {
+                console.log('워드클라우드 생성 응답:', result);  // 전체 응답 로깅
+                updateWordCloud(result.data);
+                clearError();
+            } else {
+                showError(result.message || '워드클라우드 생성 중 오류가 발생했습니다.');
+            }
         } catch (error) {
-            showError(error.message);
+            console.error('Error:', error);
+            showError('워드클라우드 생성 중 오류가 발생했습니다.');
         } finally {
             showLoading(false);
         }
-    });
+    }
+
+    generateBtn.addEventListener('click', generateWordCloud);
 
     async function testB() {
         try{
@@ -242,6 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let wordFrequencyData = [];
 
     function updateWordFrequencyTable(data) {
+        console.log('테이블 업데이트 데이터:', data);  // 테이블 데이터 로깅
         wordFrequencyData = data;
         renderWordFrequencyTable();
     }
@@ -282,6 +311,76 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('#word-search').addEventListener('input', renderWordFrequencyTable);
     document.querySelector('#sort-select').addEventListener('change', renderWordFrequencyTable);
 
+    function updateWordCloud(data) {
+        console.log('워드클라우드 데이터 업데이트:', data);  // 데이터 로깅
+        
+        // 이미지 표시
+        const wordcloudImage = document.getElementById('wordcloud-image');
+        wordcloudImage.src = `data:image/png;base64,${data.image}`;
+        wordcloudImage.style.display = 'block';
+        
+        // 다운로드 버튼 활성화
+        const downloadBtn = document.getElementById('download-btn');
+        downloadBtn.style.display = 'inline-block';
+        
+        // 단어 빈도수 데이터가 있으면 엑셀 다운로드 버튼 활성화
+        if (data.word_frequency && data.word_frequency.length > 0) {
+            console.log('단어 빈도수 데이터:', data.word_frequency);  // 단어 빈도수 데이터 로깅
+            const excelDownloadBtn = document.getElementById('excel-download-btn');
+            excelDownloadBtn.style.display = 'inline-block';
+        }
+        
+        // 단어 빈도수 테이블 업데이트
+        if (data.word_frequency) {
+            updateWordFrequencyTable(data.word_frequency);
+        }
+    }
+
+    // 엑셀 다운로드 버튼 이벤트 핸들러 설정
+    excelDownloadBtn.addEventListener('click', async () => {
+        try {
+            showLoading(true);
+            clearError();
+
+            // 현재 시간을 파일명에 포함
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            
+            // 엑셀 파일 다운로드
+            const response = await fetch(`${API_BASE_URL}/api/download/${timestamp}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('엑셀 파일 다운로드에 실패했습니다.');
+            }
+            
+            // Blob으로 변환
+            const blob = await response.blob();
+            
+            // 다운로드 링크 생성 및 클릭
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wordcloud_frequency_${timestamp}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+        } catch (error) {
+            console.error('엑셀 다운로드 실패:', error);
+            showError(`엑셀 다운로드 실패: ${error.message}`);
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    // 초기 파일 목록 로드
+    updateFileList();
+
     // 페이지 로드 시 초기화
     loadSystemFonts();
     updatePreview();
@@ -289,4 +388,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     testB();
     downloadBtn.style.display = 'none';
     excelDownloadBtn.style.display = 'none';
+
+    // 파일 업로드 처리
+    async function handleFileUpload(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/upload-file`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            
+            if (result.status === 'error') {
+                throw new Error(result.message);
+            }
+            
+            await updateFileList();
+        } catch (error) {
+            console.error('파일 업로드 중 오류:', error);
+            showError('파일 업로드 중 오류가 발생했습니다.');
+        }
+    }
 });

@@ -9,7 +9,20 @@
         <h1>워드클라우드 생성기_민식</h1>
         
         <div class="input-section">
-            <textarea id="text-input" placeholder="텍스트를 입력하세요..." oncontextmenu="return true"></textarea>
+            <div class="input-group mb-3">
+                <input type="file" class="form-control" id="textFileInput" accept=".txt" multiple>
+            </div>
+            <div class="mb-3">
+                <h5>업로드된 파일 목록</h5>
+                <div id="uploadedFiles" class="list-group">
+                    <!-- 업로드된 파일 목록이 여기에 표시됩니다 -->
+                </div>
+                <small class="text-muted mt-2">* 워드클라우드 생성 시 모든 파일의 내용이 함께 처리됩니다.</small>
+            </div>
+            <div class="mb-3">
+                <label for="textInput" class="form-label">또는 텍스트 직접 입력:</label>
+                <textarea class="form-control" id="textInput" rows="5" placeholder="워드클라우드로 만들 텍스트를 입력하세요"></textarea>
+            </div>
             
             <div class="options-section">
                 <div class="option-group">

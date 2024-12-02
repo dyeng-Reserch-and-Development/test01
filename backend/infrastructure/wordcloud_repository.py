@@ -2,11 +2,12 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import logging
 import sqlite3
-from backend.infrastructure.db_config import get_db_connection
+from backend.infrastructure.db_config import get_db_connection, init_db
 
 class WordCloudRepository:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        init_db()  # DB 초기화
 
     @staticmethod
     def create_wordcloud(name: str, word_data: List[tuple]) -> int:

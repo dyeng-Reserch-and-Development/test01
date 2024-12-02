@@ -8,8 +8,10 @@ from PIL import Image, ImageDraw
 from typing import Optional
 import base64
 from io import BytesIO
+from backend.infrastructure.wordcloud_repository import WordCloudRepository
 import sys
 from bareunpy import Tagger
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,7 @@ class WordCloudService:
         self.generator = WordCloudGenerator()
         self.logger = logging.getLogger(__name__)
         self._last_word_frequency = None  # 마지막 단어 빈도수 데이터 저장
+        self.repository = WordCloudRepository()
     
     def _preprocess_text(self, text: str) -> str:
         """텍스트 전처리"""
@@ -138,6 +141,11 @@ class WordCloudService:
                 config.text = text  # 입력받은 텍스트로 설정
                 self.logger.debug(f"사용자 설정값 사용: {config}")
             
+            # 텍스트 전처리 (WordCloudGenerator에서 수행)
+            if not text.strip():
+                raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
+            
+
             # 텍스트 전처리
 
 
@@ -194,6 +202,7 @@ class WordCloudService:
             # 데이터 저장
             self._last_word_frequency = word_frequency_data
             
+
             # 폰트 경로 가져오기
             font_path = self._get_font_path(config.font or "malgun.ttf", text)
             self.logger.debug(f"사용할 폰트 경로: {font_path}")
@@ -204,27 +213,85 @@ class WordCloudService:
             self.logger.debug(f"마스크 생성 완료: 타입={config.mask_type}, 크기={mask.shape if mask is not None else 'None'}")
             config.mask = mask  # 마스크 설정
                 
-            # 워드클라우드 생성
-            image = self.generator.generate(config)
-            self.logger.debug("워드클라우드 생성 완료")
-            
-            # 이미지를 base64로 변환
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            img_bytes = buffered.getvalue()
-            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
-            
-            self.logger.info("워드클라우드 생성 및 변환 완료")
-            self.logger.debug(f"Base64 이미지 길이: {len(img_base64)}")
-            
-            if not img_base64:
-                raise ValueError("이미지 생성 실패: base64 변환 결과가 비어있습니다")
+            # 워드클라우드 이미지 생성
+            try:
+                # 워드클라우드 이미지 생성
+                image = self.generator.generate(config)
+                self.logger.debug("워드클라우드 생성 완료")
                 
-            return {
-                'success': True,
-                'image': img_base64,
-                'words': word_frequency[:100]  # 상위 100개 단어만 반환
-            }
+                # 이미지를 base64로 변환
+                buffered = BytesIO()
+                image.save(buffered, format="PNG")
+                img_bytes = buffered.getvalue()
+                img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+                
+                self.logger.info("워드클라우드 생성 및 변환 완료")
+                self.logger.debug(f"Base64 이미지 길이: {len(img_base64)}")
+                
+                # Generator에서 단어 빈도수 가져오기
+                word_counts = self.generator.get_last_word_counts()
+                word_frequency = []
+
+                if word_counts and len(word_counts) > 0:  
+                    self.logger.info("단어 빈도수 계산 시작")
+                    total_words = sum(word_counts.values())
+                    word_frequency = [
+                        {
+                            "word": word,
+                            "frequency": count,
+                            "percentage": round((count / total_words * 100), 2)
+                        }
+                        for word, count in sorted(word_counts.items(), key=lambda x: (-x[1], x[0]))
+                    ]
+                    self._last_word_frequency = word_frequency
+                    self.logger.info(f"단어 빈도수 계산 완료: {len(word_frequency)}개 단어")
+                    
+                    try:
+                        # DB에 저장
+                        self.logger.info("워드클라우드 데이터 DB 저장 시작")
+                        self.logger.debug(f"저장할 단어 데이터: {word_frequency[:5]}...")
+                        word_data = [(item["word"], item["frequency"], item["percentage"]) for item in word_frequency]
+                        wordcloud_id = self.repository.create_wordcloud("워드클라우드", word_data)
+                        self.logger.info(f"워드클라우드 데이터 DB 저장 완료 (ID: {wordcloud_id})")
+                    except Exception as e:
+                        self.logger.error(f"워드클라우드 데이터 DB 저장 실패: {str(e)}")
+                        self.logger.exception("상세 에러:")
+                        wordcloud_id = None  
+                else:
+                    self.logger.warning("단어 빈도수 데이터가 없습니다")
+                    wordcloud_id = None
+                
+                if img_base64:
+                    self.logger.info("워드클라우드 이미지 생성 성공")
+                    return {
+                        'success': True,
+                        'message': '워드클라우드가 생성되었습니다.',
+                        'data': {
+                            'wordcloud_id': wordcloud_id,
+                            'image': img_base64,
+                            'word_frequency': word_frequency[:100]  
+                        }
+                    }
+                else:
+                    self.logger.error("워드클라우드 이미지 생성 실패: base64 변환 결과가 비어있습니다")
+                    return {
+                        'success': False,
+                        'message': '워드클라우드 이미지 생성에 실패했습니다.',
+                        'data': {
+                            'wordcloud_id': wordcloud_id,
+                            'word_frequency': word_frequency[:100]  
+                        }
+                    }
+            except Exception as e:
+                self.logger.error(f"워드클라우드 이미지 생성 중 오류 발생: {str(e)}")
+                return {
+                    'success': False,
+                    'message': f'워드클라우드 생성 중 오류가 발생했습니다: {str(e)}',
+                    'data': {
+                        'wordcloud_id': None,
+                        'word_frequency': word_frequency[:100]  
+                    }
+                }
             
         except Exception as e:
             self.logger.error(f"워드클라우드 생성 중 오류 발생: {str(e)}")
@@ -232,6 +299,33 @@ class WordCloudService:
                 'success': False,
                 'error': str(e)
             }
+
+    def process_text_file(self, file) -> dict:
+        """
+        텍스트 파일을 처리하여 워드클라우드를 생성합니다.
+        
+        Args:
+            file: 업로드된 텍스트 파일 객체
+            
+        Returns:
+            워드클라우드 정보를 담은 딕셔너리
+        """
+        try:
+            # 파일 확장자 검사
+            if not file.filename.lower().endswith('.txt'):
+                raise ValueError("Only .txt files are allowed")
+            
+            # 파일 내용 읽기
+            content = file.read().decode('utf-8')
+            
+            # 워드클라우드 생성
+            return self.create_wordcloud(content)
+            
+        except UnicodeDecodeError:
+            raise ValueError("Invalid text file encoding. Please ensure the file is UTF-8 encoded.")
+        except Exception as e:
+            self.logger.error(f"Error processing text file: {str(e)}")
+            raise
 
     def get_last_word_frequency(self):
         """마지막으로 생성된 워드클라우드의 단어 빈도수 데이터 반환"""
