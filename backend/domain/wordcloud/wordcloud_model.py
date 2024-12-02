@@ -5,7 +5,8 @@ import os
 import re
 import numpy as np
 from PIL import Image
-
+import sys
+from bareunpy import Tagger
 class WordCloudConfig(BaseModel):
     """워드클라우드 설정"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -178,10 +179,24 @@ class WordCloudGenerator:
         text = re.sub(r'[a-zA-Z0-9]+', ' ', text)
         # 특수문자 제거
         text = re.sub(r'[^\w\s가-힣]', ' ', text)
+
+        API_KEY="koba-5E34BFY-27YUXYI-QW4U6KY-CCEEYIA" # <- 본인의 API KEY로 교체 
+
+        # 방금 설치한 자신의 호스트에 접속합니다.
+        tagger = Tagger(API_KEY, 'localhost',5757)
+        # 결과를 가져옵니다.
+        res = tagger.tags([text])
+        self.logger.info("로그 드가자" , res.nouns())
         # 공백으로 분리하여 단어 목록 생성
-        words = text.split()
+
+
+        words = res.nouns()
+
+
+
+        self.logger.info("로그 드가자2" , words)
         # 2글자 이상인 한글 단어만 선택
-        words = [word for word in words if len(word) >= 2 and re.match(r'^[가-힣]+$', word)]
+        words = [word for word in words if len(word) >= 1 and re.match(r'^[가-힣]+$', word)]
         return ' '.join(words)
 
     def create_mask(self, width, height, mask_type):

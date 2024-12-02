@@ -141,7 +141,7 @@ class WordCloudService:
             # 텍스트 전처리
 
 
-
+            # 그냥 서비스단에서 심플 전처리
             processed_text = self._preprocess_text(text)
             self.logger.info("이거 뭔데" , processed_text)
 
@@ -166,7 +166,7 @@ class WordCloudService:
             word_counts = {}
             total_words = 0
             for word in words:
-                if len(word) >= 2:  # 2글자 이상인 단어만 포함
+                if len(word) >= 1:  # 1글자 이상인 단어만 포함
                     word_counts[word] = word_counts.get(word, 0) + 1
                     total_words += 1
             
