@@ -118,6 +118,7 @@ class WordCloudGenerator:
             
             # 텍스트 전처리
             text = self.preprocess_text(config.text)
+            self.logger.info("모델 전처리" , text)
             self.logger.debug(f"전처리된 텍스트 (generate): {text[:100]}...")
             
             if not text.strip():

@@ -9,11 +9,15 @@ from typing import Optional
 import base64
 from io import BytesIO
 
+import sys
+import bareunpy as brn
+import google.protobuf.text_format as tf
+
 logger = logging.getLogger(__name__)
 
 class WordCloudService:
     def __init__(self):
-        self.generator = WordClofudGenerator()
+        self.generator = WordCloudGenerator()
         self.logger = logging.getLogger(__name__)
         self._last_word_frequency = None  # 마지막 단어 빈도수 데이터 저장
     
@@ -23,7 +27,17 @@ class WordCloudService:
         text = re.sub(r'[a-zA-Z0-9]+', '', text)
         # 특수문자 제거
         text = re.sub(r'[^\w\s]', '', text)
-        return text
+
+        self.logger.info("로그 확인1" , text)
+        API_KEY = "koba-5E34BFY-27YUXYI-QW4U6KY-CCEEYIA" # <- 본인의 API KEY로 교체 
+        t = brn.Tagger(API_KEY, "localhost", 5757)
+        res = t.tags([text])
+        va = res.nouns()
+        self.logger.info("로그 확인2" , ','.join(va))
+        tf.PrintMessage(va, out=sys.stdout, as_utf8=True)
+        return ','.join(va)
+        # return res.as_json()
+        # return text
 
     def _get_font_path(self, font_name: str, text: str) -> str:
         """폰트 경로 반환"""
@@ -140,16 +154,16 @@ class WordCloudService:
                 raise ValueError("텍스트가 비어있거나 유효하지 않습니다.")
             
             # 단어 빈도수 계산
-            words = processed_text.split()
+            # words = processed_text.split()
             word_counts = {}
             total_words = 0
-            for word in words:
+            for word in processed_text:
                 if len(word) >= 2:  # 2글자 이상인 단어만 포함
                     word_counts[word] = word_counts.get(word, 0) + 1
                     total_words += 1
             
             # 빈도수 기준으로 정렬
-            sorted_words = sorted(word_counts.items(), key=lambda x: (-x[1], x[0]))
+            sorted_words = sorted(processed_text.items(), key=lambda x: (-x[1], x[0]))
             word_frequency = [
                 {
                     "word": word,
