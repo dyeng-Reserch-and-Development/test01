@@ -188,21 +188,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const textInput = document.getElementById('textInput').value;
             let content = textInput;
 
-            // 텍스트 입력이 없는 경우 업로드된 파일들의 내용을 사용
-            if (!textInput.trim()) {
-                const response = await fetch(`${API_BASE_URL}/api/all-files-content`);
-                const result = await response.json();
-                
-                if (result.status === 'error') {
-                    throw new Error(result.message);
+            // 백엔드 메모리에 업로드된 파일 dict가 있는지 확인
+            
+        
+                const responseFileContents = await fetch(`${API_BASE_URL}/api/all-files-content`);
+                const resultFileContents = await responseFileContents.json();
+                console.log("??",resultFileContents);
+                if (resultFileContents.status === 'error') {
+                    throw new Error(resultFileContents.message);
                 }
                 
-                if (!result.data.content) {
+                if (!resultFileContents.data.content) {
                     throw new Error('처리할 텍스트가 없습니다. 파일을 업로드하거나 텍스트를 입력해주세요.');
                 }
                 
-                content = result.data.content;
-            }
+                content += resultFileContents.data.content;
+                content = content.trim();
 
             const backgroundColor = document.getElementById('background-color').value;
             const fontFamily = document.getElementById('fontSelect').value;
@@ -240,20 +241,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    generateBtn.addEventListener('click', generateWordCloud);
+     generateBtn.addEventListener('click', generateWordCloud);
 
-    async function testB() {
-        try{
-            const response = await fetch(`${API_BASE_URL}/api/test`);
-            console.log(typeof(response));
-            console.log(response);
-            const data = await response.json();
-            console.log(data);
-        } catch(err) {
-            console.log(`에러 : ${err}`);
-        }
+    // async function testB() {
+    //     try{
+    //         const response = await fetch(`${API_BASE_URL}/api/test`);
+    //         console.log(typeof(response));
+    //         console.log(response);
+    //         const data = await response.json();
+    //         console.log(data);
+    //     } catch(err) {
+    //         console.log(`에러 : ${err}`);
+    //     }
         
-    }
+    // }
 
     // 다운로드 버튼 이벤트 리스너
     downloadBtn.addEventListener('click', () => {
@@ -385,7 +386,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadSystemFonts();
     updatePreview();
     showLoading(false);
-    testB();
     downloadBtn.style.display = 'none';
     excelDownloadBtn.style.display = 'none';
 

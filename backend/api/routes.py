@@ -41,7 +41,52 @@ class FontInfo(BaseModel):
 class FontResponse(BaseModel):
     fonts: List[FontInfo]
 
-
+# @router.post("/generate")
+# async def generate_wordcloud(
+#     request: WordCloudRequest ,
+#     file: UploadFile = File(...)
+# ):
+#     """워드클라우드 생성 엔드포인트"""
+#     try:
+#         if file:
+#             # 파일 내용 읽기
+#             content = await file.read()
+#             text = content.decode('utf-8')
+#         else:
+#             text = request.text
+#         logger.info("텍스트 합친거" , text)
+#         # 워드클라우드 설정을 WordCloudConfig로 변환
+#         config = WordCloudConfig(
+#             text=text,
+#             background_color=request.background_color,
+#             color_func=request.color_func,
+#             mask_type=request.mask_type,
+#             width=request.width,
+#             height=request.height,
+#             max_words=request.max_words,
+#             font=request.font
+#         )
+        
+#         # 워드클라우드 이미지 생성
+#         result = wordcloud_service.create_wordcloud(text, config)
+        
+#         if not result['success']:
+#             raise HTTPException(status_code=500, detail=result.get('message', '워드클라우드 생성 실패'))
+            
+#         # JSON 응답 반환
+#         return {
+#             "success": True,
+#             "message": result.get('message', '워드클라우드가 생성되었습니다.'),
+#             "data": {
+#                 "wordcloud_id": result['data']['wordcloud_id'],
+#                 "image": result['data']['image'],
+#                 "word_frequency": result['data']['word_frequency']
+#             }
+#         }
+        
+#     except Exception as e:
+#         logger.error(f"워드클라우드 생성 중 오류 발생: {str(e)}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/generate")
 async def generate_wordcloud(request: WordCloudRequest):
@@ -79,6 +124,41 @@ async def generate_wordcloud(request: WordCloudRequest):
     except Exception as e:
         logger.error(f"워드클라우드 생성 중 오류 발생: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# @router.post("/upload-wordcloud")
+# async def upload_wordcloud(
+#     file: UploadFile = File(...),
+#     background_color: str = Form(None),
+#     width: int = Form(800),
+#     height: int = Form(400),
+#     font: str = Form(None),
+#     mask_type: str = Form("rectangle")
+# ):
+#     try:
+#         # 파일 내용 읽기
+#         content = await file.read()
+#         text = content.decode('utf-8')
+        
+#         # 설정 생성
+#         config = WordCloudConfig(
+#             text=text,  # 파일 내용을 text 필드에 설정
+#             background_color=background_color,
+#             width=width,
+#             height=height,
+#             font=font,
+#             mask_type=mask_type
+#         )
+        
+#         # 워드클라우드 생성
+#         result = wordcloud_service.create_wordcloud(text, config)
+#         return {"status": "success", "data": result}
+#     except Exception as e:
+#         logger.error(f"Error processing file upload: {str(e)}")
+#         return {"status": "error", "message": str(e)}
+
+
+
 
 @router.get("/fonts", response_model=FontResponse)
 async def get_system_fonts():
@@ -161,37 +241,6 @@ async def download_excel(filename: str):
         logger.error(f"엑셀 파일 생성 중 오류 발생: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/upload-wordcloud")
-async def upload_wordcloud(
-    file: UploadFile = File(...),
-    background_color: str = Form(None),
-    width: int = Form(800),
-    height: int = Form(400),
-    font: str = Form(None),
-    mask_type: str = Form("rectangle")
-):
-    try:
-        # 파일 내용 읽기
-        content = await file.read()
-        text = content.decode('utf-8')
-        
-        # 설정 생성
-        config = WordCloudConfig(
-            text=text,  # 파일 내용을 text 필드에 설정
-            background_color=background_color,
-            width=width,
-            height=height,
-            font=font,
-            mask_type=mask_type
-        )
-        
-        # 워드클라우드 생성
-        result = wordcloud_service.create_wordcloud(text, config)
-        return {"status": "success", "data": result}
-    except Exception as e:
-        logger.error(f"Error processing file upload: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
 @router.post("/upload-file")
 async def upload_file(file: UploadFile = File(...)):
     """파일 업로드만 처리하는 엔드포인트"""
@@ -228,19 +277,19 @@ async def get_uploaded_files():
         ]
     }
 
-@router.get("/file-content/{file_id}")
-async def get_file_content(file_id: str):
-    """특정 파일의 내용 반환"""
-    if file_id not in uploaded_files:
-        raise HTTPException(status_code=404, detail="File not found")
+# @router.get("/file-content/{file_id}")
+# async def get_file_content(file_id: str):
+#     """특정 파일의 내용 반환"""
+#     if file_id not in uploaded_files:
+#         raise HTTPException(status_code=404, detail="File not found")
     
-    return {
-        "status": "success",
-        "data": {
-            "content": uploaded_files[file_id]["content"],
-            "filename": uploaded_files[file_id]["filename"]
-        }
-    }
+#     return {
+#         "status": "success",
+#         "data": {
+#             "content": uploaded_files[file_id]["content"],
+#             "filename": uploaded_files[file_id]["filename"]
+#         }
+#     }
 
 @router.get("/all-files-content")
 async def get_all_files_content():
@@ -297,4 +346,6 @@ async def test():
     m = res.msg()
     tf.PrintMessage(m, out=sys.stdout, as_utf8=True)
     return res.as_json()
+
+
 

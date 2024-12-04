@@ -134,6 +134,7 @@ class WordCloudGenerator:
             words = text.split()
             word_counts = Counter(words)
             self._last_word_counts = dict(word_counts)  # 빈도수 저장
+    
             self.logger.debug(f"단어 빈도수 상위 10개: {dict(word_counts.most_common(10))}")
             
             # 색상 함수 가져오기

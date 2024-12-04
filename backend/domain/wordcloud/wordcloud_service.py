@@ -29,9 +29,6 @@ class WordCloudService:
         # 특수문자 제거
         text = re.sub(r'[^\w\s]', '', text)
 
-
-        self.logger.info("로그 드가즈아" , text)
-
         return text
 
     def _get_font_path(self, font_name: str, text: str) -> str:
@@ -151,7 +148,6 @@ class WordCloudService:
 
             # 그냥 서비스단에서 심플 전처리
             processed_text = self._preprocess_text(text)
-            self.logger.info("이거 뭔데" , processed_text)
 
             self.logger.debug(f"전처리된 텍스트: {processed_text[:100]}...")
             
@@ -170,7 +166,6 @@ class WordCloudService:
             # words = processed_text.split()
             res = tagger.tags([text])
             words = res.nouns()
-            self.logger.info("이거 뭔데2" , words)
             word_counts = {}
             total_words = 0
             for word in words:
